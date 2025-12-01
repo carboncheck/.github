@@ -141,6 +141,61 @@ CarbonCheck is built as a distributed system with four main components:
 
 ## Data Methodology
 
+### The Secret Sauce: BEA-NAICS CO2 Coefficient Mapping
+
+At the heart of CarbonCheck is a comprehensive dataset that maps economic sectors to their carbon intensity. This enables accurate CO2e estimation for any product by matching it to its economic sector.
+
+#### Master Data Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    BEA-NAICS-CO2 MASTER MAPPING                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  bea_code     │ BEA sector code           │ "1111A0"                           │
+│  bea_desc     │ BEA sector description    │ "Oilseed farming"                  │
+│  naics_code   │ 6-digit NAICS code        │ 111110                             │
+│  naics_desc   │ NAICS activity detail     │ "Soybean farming, field & seed"    │
+│  eio_co2      │ CO2 coefficient           │ 1.0377 kg CO2e per $1 output       │
+│  Title        │ Official industry title   │ "Soybean Farming"                  │
+│  Description  │ Full industry definition  │ Census Bureau description          │
+│  text_clean   │ Normalized search text    │ "soybean farming field seed..."    │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### How It Works
+
+```
+Product: "Organic Sunflower Seeds - 2lb bag"
+Price: $12.99
+         │
+         │ [1] NLP embedding matches to NAICS description
+         ↓
+┌────────────────────────────────────────────────────────────────┐
+│  Match: naics_desc = "Sunflower farming, field and seed prod." │
+│  naics_code = 111120                                           │
+│  bea_code = 1111A0                                             │
+│  eio_co2 = 1.0377 kg CO2e/$                                    │
+└────────────────────────────────────────────────────────────────┘
+         │
+         │ [2] Apply coefficient
+         ↓
+CO2e = $12.99 × 1.0377 = 13.48 kg CO2e
+```
+
+#### Example: CO2 Coefficients by Sector
+
+| bea_code | bea_desc | naics_code | naics_desc | eio_co2 |
+|----------|----------|------------|------------|---------|
+| 1111A0 | Oilseed farming | 111110 | Soybean farming | **1.0377** |
+| 1111A0 | Oilseed farming | 111120 | Sunflower farming | **1.0377** |
+| 1111B0 | Grain farming | 111130 | Dry bean farming | **2.4747** |
+| 315000 | Apparel | 315220 | Men's cut & sew apparel | **0.143** |
+| 334111 | Computers | 334111 | Electronic computers | **0.089** |
+
+**Key insight**: Products in the same BEA sector share the same CO2 coefficient, but NAICS provides granular matching.
+
 ### CO2 Equivalent (CO2e) Calculation
 
 CarbonCheck uses **Environmental Economic Input-Output (EEIO) analysis** to estimate product carbon footprints:
@@ -553,7 +608,7 @@ cdk deploy
 ### Environmental Impact Data Sources
 
 All CO2e calculations are based on:
-- **USEEIO v2.0.1** - Peer-reviewed EPA environmental model
+- **[USEEIO v2.0.1](https://github.com/USEPA/USEEIO/tree/master)** - Peer-reviewed EPA environmental model
 - **Amazon Climate Pledge Friendly** - Verified sustainability certifications
 - **Category-level aggregation** - Statistical CO2e distributions
 
